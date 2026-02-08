@@ -3,130 +3,125 @@
 <head>
     <title>AI Platformer Generator</title>
     <style>
-        body { background: #222; color: white; font-family: sans-serif; text-align: center; overflow: hidden; }
-        canvas { background: #000; display: block; margin: 20px auto; border: 4px solid #444; }
-        .controls { margin-top: 10px; }
-        button { padding: 10px 20px; cursor: pointer; font-weight: bold; margin: 5px; }
+        body { 
+            background: #1a1a1a; 
+            color: white; 
+            font-family: 'Courier New', Courier, monospace; 
+            text-align: center; 
+            overflow: hidden; 
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        /* MENU STYLES */
+        #menu {
+            border: 2px solid #555;
+            padding: 40px;
+            background: #222;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        h1 { margin-top: 0; text-transform: uppercase; letter-spacing: 2px; color: #00ffcc; }
+        p { color: #aaa; margin-bottom: 20px; }
+        
+        button { 
+            display: block; 
+            width: 100%; 
+            padding: 15px; 
+            margin: 10px 0; 
+            cursor: pointer; 
+            font-weight: bold; 
+            font-size: 16px; 
+            border: none; 
+            border-radius: 5px;
+            transition: transform 0.1s;
+        }
+        button:hover { transform: scale(1.05); }
+
+        /* Theme Button Colors */
+        .btn-classic { background: #5c94fc; color: white; }
+        .btn-neon { background: #f0f; color: black; box-shadow: 0 0 10px #f0f; }
+        .btn-lava { background: #ff4500; color: white; }
+
+        /* GAME CANVAS STYLES */
+        #gameContainer { display: none; position: relative; }
+        canvas { 
+            background: #000; 
+            border: 4px solid #444; 
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+        
+        #backBtn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid white;
+            padding: 5px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            width: auto;
+        }
     </style>
 </head>
 <body>
-    <h1>AI Game Generator</h1>
-    <p>Select a Game Type:</p>
-    <button onclick="generateGame('classic')">Classic Mario-Style</button>
-    <button onclick="generateGame('neon')">Neon Speedrunner</button>
-    <button onclick="generateGame('lava')">Lava Escape</button>
 
-    <canvas id="gameCanvas" width="800" height="400"></canvas>
-    <p>Controls: <b>WASD / Arrows</b> to Move, <b>Space</b> to Jump</p>
+    <div id="menu">
+        <h1>AI Game Gen v3.0</h1>
+        <p>Select a logic model to generate your level:</p>
+        <button class="btn-classic" onclick="startGame('classic')">CLASSIC MARIO</button>
+        <button class="btn-neon" onclick="startGame('neon')">NEON SPEEDRUN</button>
+        <button class="btn-lava" onclick="startGame('lava')">LAVA ESCAPE</button>
+    </div>
+
+    <div id="gameContainer">
+        <button id="backBtn" onclick="goToMenu()">← Back to Menu</button>
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <p><b>WASD / Space</b> to Jump</p>
+    </div>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+let isPlaying = false;
+let animationId; // To store the requestAnimationFrame ID
+
+// Game Objects
 let player = { x: 50, y: 300, w: 30, h: 30, dy: 0, jump: -12, speed: 5, grounded: false };
 let platforms = [];
 let goal = { x: 750, y: 300, w: 40, h: 40 };
 let currentTheme = { bg: '#000', plat: '#fff', player: '#0f0' };
 let gravity = 0.8;
 
+// --- MENU LOGIC ---
+
+function startGame(type) {
+    // UI Switching
+    document.getElementById('menu').style.display = 'none';
+    document.getElementById('gameContainer').style.display = 'block';
+    
+    // Start Game
+    isPlaying = true;
+    generateGame(type);
+    loop(); // Start the game loop
+}
+
+function goToMenu() {
+    isPlaying = false;
+    cancelAnimationFrame(animationId); // Stop the loop
+    document.getElementById('menu').style.display = 'block';
+    document.getElementById('gameContainer').style.display = 'none';
+}
+
+// --- GAME LOGIC ---
+
 function generateGame(type) {
     // Reset Player
     player.x = 50; player.y = 300; player.dy = 0;
-    platforms = [{ x: 0, y: 350, w: 200, h: 50 }]; // Starting floor
-
-    // AI Logic: Procedural Generation
-    if (type === 'classic') {
-        currentTheme = { bg: '#5c94fc', plat: '#885010', player: '#f83800' };
-        for(let i=1; i<6; i++) {
-            platforms.push({ x: i*140, y: 350 - (Math.random()*120), w: 100, h: 20 });
-        }
-    } 
-    else if (type === 'neon') {
-        currentTheme = { bg: '#111', plat: '#0ff', player: '#f0f' };
-        for(let i=1; i<7; i++) {
-            platforms.push({ x: i*130, y: 150 + (Math.random()*200), w: 60, h: 10 });
-        }
-    }
-    else if (type === 'lava') {
-        currentTheme = { bg: '#400', plat: '#ff4500', player: '#ffff00' };
-        for(let i=1; i<6; i++) {
-            platforms.push({ x: i*150, y: 320 - (i*40), w: 80, h: 20 });
-        }
-    }
-    
-    // Place goal at the end
-    goal.x = platforms[platforms.length-1].x + 20;
-    goal.y = platforms[platforms.length-1].y - 40;
-}
-
-// Input Handling
-let keys = {};
-
-window.addEventListener('keydown', function(e) {
-    keys[e.key] = true;
-    // Prevent scrolling for Space and Arrows
-    if([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.key) > -1) {
-        e.preventDefault();
-    }
-});
-
-window.addEventListener('keyup', function(e) {
-    keys[e.key] = false;
-});
-
-function update() {
-    // MOVE RIGHT: ArrowRight OR 'd' OR 'D'
-    if (keys['ArrowRight'] || keys['d'] || keys['D']) {
-        player.x += player.speed;
-    }
-
-    // MOVE LEFT: ArrowLeft OR 'a' OR 'A'
-    if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
-        player.x -= player.speed;
-    }
-
-    // JUMP: ArrowUp OR 'w' OR 'W' OR Space (' ')
-    if ((keys['ArrowUp'] || keys['w'] || keys['W'] || keys[' ']) && player.grounded) {
-        player.dy = player.jump;
-        player.grounded = false;
-    }
-
-    // Physics
-    player.dy += gravity;
-    player.y += player.dy;
-    player.grounded = false;
-
-    // Collision Detection
-    platforms.forEach(p => {
-        if (player.x < p.x + p.w && player.x + player.w > p.x &&
-            player.y < p.y + p.h && player.y + player.h > p.y && player.dy > 0) {
-            player.grounded = true;
-            player.dy = 0;
-            player.y = p.y - player.h;
-        }
-    });
-
-    // Reset if fallen
-    if(player.y > canvas.height) {
-        player.x = 50; 
-        player.y = 300;
-        player.dy = 0;
-    }
-}
-
-function draw() {
-    // Clear Screen
-    ctx.fillStyle = currentTheme.bg;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw Platforms
-    ctx.fillStyle = currentTheme.plat;
-    platforms.forEach(p => ctx.fillRect(p.x, p.y, p.w, p.h));
-
-    // Draw Player
-    ctx.fillStyle = currentTheme.player;
-    ctx.fillRect(player.x, player.y, player.w, player.h);
-
-    // Draw Goal
-    ctx.fillStyle = 'gold';
-    ctx.fillRect(
+    platforms = [{ x: 0, y: 350, w: 20
